@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #006B0A;
+  --color-primary-dark: #005208;
+  --color-primary-light: #008a10;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f0fdf4;
+  --color-ink: #0f1a15;
+  --color-ink-soft: #374151;
+  --color-line: #d1fae5;
+  --color-line-soft: #a7f3d0;
+  --color-accent: #006B0A;
+  --color-accent-hover: #005208;
+  --color-dead: #dc2626;
+  --color-repair: #f59e0b;
+  --color-alive: #006B0A;
+  --color-stripped: #6b7280;
+  --color-gradient-start: #006B0A;
+  --color-gradient-end: #007a0f;
+
+  --font-display: "Fraunces", serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    background: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+}
+
+@layer components {
+  .tag-clip {
+    position: relative;
+    background: white;
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+
+  .tag-clip::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(225deg, transparent 50%, var(--color-line) 50%);
+  }
+
+  .tag-clip:hover {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(135deg, var(--color-gradient-end), var(--color-gradient-start));
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -5px rgba(5, 150, 105, 0.3);
+  }
+
+  .card-hover {
+    transition: all 0.3s ease;
+  }
+
+  .card-hover:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+  }
+
+  .fade-in-up {
+    animation: fadeInUp 0.5s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .nav-link {
+    position: relative;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+  }
+
+  .nav-link:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .nav-link.active {
+    color: white;
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
