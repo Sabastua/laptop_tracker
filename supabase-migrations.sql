@@ -9,6 +9,8 @@
 
 DROP VIEW IF EXISTS public.device_current_state CASCADE;
 DROP VIEW IF EXISTS public.handover_requests_safe CASCADE;
+DROP TABLE IF EXISTS public.device_comments CASCADE;
+DROP TABLE IF EXISTS public.device_reviews CASCADE;
 DROP TABLE IF EXISTS public.chat_messages CASCADE;
 DROP TABLE IF EXISTS public.allowed_engineers CASCADE;
 DROP TABLE IF EXISTS public.handover_requests CASCADE;
@@ -34,6 +36,8 @@ DROP FUNCTION IF EXISTS public.enforce_email_domain() CASCADE;
 DROP FUNCTION IF EXISTS public.is_authorized_engineer() CASCADE;
 DROP FUNCTION IF EXISTS public.is_admin() CASCADE;
 DROP FUNCTION IF EXISTS public.sync_profile_role_from_allowed_engineers() CASCADE;
+DROP FUNCTION IF EXISTS public.update_review_timestamp() CASCADE;
+DROP FUNCTION IF EXISTS public.update_comment_timestamp() CASCADE;
 
 -- ============================================================================
 -- MIGRATION 1 — Core Tables
@@ -819,6 +823,105 @@ GRANT SELECT ON public.profiles TO authenticated;
 GRANT SELECT ON public.devices TO authenticated;
 GRANT SELECT ON public.device_current_state TO authenticated;
 GRANT SELECT ON public.handover_requests_safe TO authenticated;
+
+-- ============================================================================
+-- MIGRATION 9 — Device Reviews and Comments
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.device_reviews (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  device_id uuid NOT NULL REFERENCES public.devices(id) ON DELETE CASCADE,
+  engineer_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  rating integer NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  title text,
+  body text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.device_comments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  device_id uuid NOT NULL REFERENCES public.devices(id) ON DELETE CASCADE,
+  review_id uuid REFERENCES public.device_reviews(id) ON DELETE CASCADE,
+  engineer_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  parent_comment_id uuid REFERENCES public.device_comments(id) ON DELETE CASCADE,
+  body text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Trigger: update review timestamp on edit
+CREATE OR REPLACE FUNCTION public.update_review_timestamp()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS update_review_timestamp ON public.device_reviews;
+CREATE TRIGGER update_review_timestamp
+  BEFORE UPDATE ON public.device_reviews
+  FOR EACH ROW EXECUTE FUNCTION public.update_review_timestamp();
+
+-- Trigger: update comment timestamp on edit
+CREATE OR REPLACE FUNCTION public.update_comment_timestamp()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS update_comment_timestamp ON public.device_comments;
+CREATE TRIGGER update_comment_timestamp
+  BEFORE UPDATE ON public.device_comments
+  FOR EACH ROW EXECUTE FUNCTION public.update_comment_timestamp();
+
+-- RLS policies for reviews
+CREATE POLICY "Authorized engineers can view device reviews"
+  ON public.device_reviews FOR SELECT
+  USING (public.is_authorized_engineer());
+
+CREATE POLICY "Engineers can insert own reviews"
+  ON public.device_reviews FOR INSERT
+  WITH CHECK (engineer_id = auth.uid() AND public.is_authorized_engineer());
+
+CREATE POLICY "Engineers can update own reviews"
+  ON public.device_reviews FOR UPDATE
+  USING (engineer_id = auth.uid() AND public.is_authorized_engineer());
+
+CREATE POLICY "Engineers can delete own reviews"
+  ON public.device_reviews FOR DELETE
+  USING (engineer_id = auth.uid() AND public.is_authorized_engineer());
+
+-- RLS policies for comments
+CREATE POLICY "Authorized engineers can view device comments"
+  ON public.device_comments FOR SELECT
+  USING (public.is_authorized_engineer());
+
+CREATE POLICY "Engineers can insert own comments"
+  ON public.device_comments FOR INSERT
+  WITH CHECK (engineer_id = auth.uid() AND public.is_authorized_engineer());
+
+CREATE POLICY "Engineers can update own comments"
+  ON public.device_comments FOR UPDATE
+  USING (engineer_id = auth.uid() AND public.is_authorized_engineer());
+
+CREATE POLICY "Engineers can delete own comments"
+  ON public.device_comments FOR DELETE
+  USING (engineer_id = auth.uid() AND public.is_authorized_engineer());
+
+-- ============================================================================
+-- MIGRATION 10 — RLS policies for reviews/comments
+-- ============================================================================
+
+ALTER TABLE public.device_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.device_comments ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- SEED YOUR ADMIN USER

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import Navbar from '../components/Navbar'
@@ -10,8 +11,27 @@ const STATUSES = [
   { value: 'expired', label: 'Expired' },
 ]
 
+const STATUS_COLORS = {
+  active: '#10b981',
+  repaired: '#6366f1',
+  in_repair: '#f59e0b',
+  dead: '#ef4444',
+  stripped: '#64748b',
+  disposed: '#94a3b8',
+}
+
+const STATUS_LABELS = {
+  active: 'Active',
+  repaired: 'Repaired',
+  in_repair: 'In Repair',
+  dead: 'Dead',
+  stripped: 'Stripped',
+  disposed: 'Disposed',
+}
+
 export default function Handover() {
   const { profile } = useAuth()
+  const navigate = useNavigate()
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -59,7 +79,7 @@ export default function Handover() {
   const fetchDevices = async () => {
     const { data, error } = await supabase
       .from('device_current_state')
-      .select('id, qr_code, asset_tag, brand, model, status')
+      .select('id, qr_code, asset_tag, serial_number, brand, model, status, current_handler_id, current_handler_name')
       .order('marked_dead_at', { ascending: false })
 
     if (error) {
@@ -141,6 +161,11 @@ export default function Handover() {
     return isRecipient(req) && req.status === 'pending' && new Date(req.expires_at) > new Date()
   }
 
+  const deviceStateById = devices.reduce((acc, device) => {
+    acc[device.id] = device
+    return acc
+  }, {})
+
   return (
     <div className="min-h-dvh bg-surface">
       <Navbar />
@@ -182,40 +207,72 @@ export default function Handover() {
           </div>
         ) : (
           <div className="space-y-4">
-            {requests.map((req) => (
+            {requests.map((req) => {
+              const deviceState = deviceStateById[req.device_id]
+              const status = deviceState?.status || req.device?.status
+              return (
               <div key={req.id} className="tag-clip p-6 card-hover">
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h3 className="font-medium text-ink">
-                      {req.device?.asset_tag || req.device?.qr_code}
+                      {deviceState?.asset_tag || req.device?.asset_tag || req.device?.qr_code}
                     </h3>
                     <p className="text-xs text-ink-soft font-mono">
                       {req.device?.brand} {req.device?.model} · {req.device?.qr_code}
                     </p>
                   </div>
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      req.status === 'accepted'
-                        ? 'bg-green-50 text-alive'
-                        : req.status === 'revoked'
-                        ? 'bg-red-50 text-dead'
-                        : req.status === 'expired'
-                        ? 'bg-gray-100 text-stripped'
-                        : 'bg-amber-50 text-repair'
-                    }`}
-                  >
-                    {STATUSES.find((s) => s.value === req.status)?.label || req.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {status && (
+                      <span
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                        style={{
+                          color: STATUS_COLORS[status],
+                          backgroundColor: `${STATUS_COLORS[status]}14`,
+                          borderColor: `${STATUS_COLORS[status]}40`,
+                        }}
+                      >
+                        {STATUS_LABELS[status] || status}
+                      </span>
+                    )}
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        req.status === 'accepted'
+                          ? 'bg-green-50 text-alive'
+                          : req.status === 'revoked'
+                          ? 'bg-red-50 text-dead'
+                          : req.status === 'expired'
+                          ? 'bg-gray-100 text-stripped'
+                          : 'bg-amber-50 text-repair'
+                      }`}
+                    >
+                      {STATUSES.find((s) => s.value === req.status)?.label || req.status}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mb-4">
                   <div>
+                    <span className="block text-ink-soft">Asset Tag</span>
+                    <span className="font-mono text-ink">{deviceState?.asset_tag || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-ink-soft">Serial Number</span>
+                    <span className="font-mono text-ink">{deviceState?.serial_number || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-ink-soft">Current Handler</span>
+                    <span className="text-ink">{deviceState?.current_handler_name || 'Unassigned'}</span>
+                  </div>
+                  <div>
                     <span className="block text-ink-soft">From</span>
                     <span className="text-ink">{req.from?.full_name || req.from?.email || '—'}</span>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm mb-4">
                   <div>
                     <span className="block text-ink-soft">To</span>
-                    <span className="text-ink">{req.allowed_emails?.join(', ') || '—'}</span>
+                    <span className="text-ink break-words">{req.allowed_emails?.join(', ') || '—'}</span>
                   </div>
                   <div>
                     <span className="block text-ink-soft">Created</span>
@@ -234,8 +291,8 @@ export default function Handover() {
                   </div>
                 )}
 
-                {canActOn(req) && (
-                  <div className="pt-3 border-t border-line">
+                <div className="pt-3 border-t border-line flex flex-wrap items-center gap-3">
+                  {canActOn(req) && (
                     <button
                       onClick={() => handleAccept(req.device_id)}
                       className="btn-primary text-sm flex items-center gap-2"
@@ -245,10 +302,17 @@ export default function Handover() {
                       </svg>
                       Accept Handover
                     </button>
-                  </div>
-                )}
+                  )}
+                  <button
+                    onClick={() => navigate(`/device/${req.device?.qr_code}`)}
+                    className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-surface-soft transition-colors"
+                  >
+                    View Device Record
+                  </button>
+                </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </main>

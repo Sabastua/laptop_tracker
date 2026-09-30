@@ -6,7 +6,6 @@ import PendingAcess from './pages/PendingAcess'
 import AuthCallback from './pages/AuthCallback'
 import Dashboard from './pages/Dashboard'
 import DeviceAction from './pages/DeviceAction'
-import ScanDevice from './pages/ScanDevice'
 import PartsRecycling from './pages/PartsRecycling'
 import Handover from './pages/Handover'
 import Chat from './pages/Chat'
@@ -88,7 +87,7 @@ function App() {
             path="/scan"
             element={
               <ProtectedRoute>
-                <ScanDevice />
+                <Navigate to="/" replace />
               </ProtectedRoute>
             }
           />
