@@ -1,5 +1,6 @@
 import { createContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import analytics from '../lib/posthog'
 
 export const AuthContext = createContext(null)
 
@@ -59,6 +60,12 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (profile?.id) {
+      analytics.identify({ id: profile.id, role: profile.role })
+    }
+  }, [profile?.id, profile?.role])
+
   const signInWithSSO = async () => {
     setAuthError('')
 
@@ -113,6 +120,7 @@ export function AuthProvider({ children }) {
   const signOut = async () => {
     await supabase.auth.signOut()
     setAuthError('')
+    analytics.reset()
   }
 
   const clearError = () => setAuthError('')

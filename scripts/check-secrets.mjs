@@ -75,7 +75,7 @@ if (ignoreCheck === '' && git('check-ignore', '.env') === '') {
   pass('.env is covered by .gitignore')
 }
 
-const requiredKeys = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY']
+const requiredKeys = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY', 'VITE_POSTHOG_KEY']
 const examplePath = join(root, '.env.example')
 
 if (existsSync(examplePath)) {
