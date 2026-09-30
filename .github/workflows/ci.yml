@@ -42,6 +42,12 @@ jobs:
       - name: Verify build output
         run: npm run verify:build
 
+      - name: Static security scan
+        run: npm run scan:security
+
+      - name: Supabase schema audit
+        run: npm run audit:schema
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -64,14 +70,3 @@ jobs:
 
       - name: Check for committed secrets and schema drift
         run: npm run check:secrets
-
-  dependency-review:
-    name: Dependency Review
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high

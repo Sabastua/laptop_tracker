@@ -812,7 +812,14 @@ CREATE POLICY "Users can insert own chat messages"
 -- GRANT PERMISSIONS
 -- ============================================================================
 
-GRANT USAGE ON SCHEMA public TO anon, authenticated;
+-- The app requires an authenticated session on every route, so the anon role
+-- gets no access to the public schema at all. Revoking first makes the intent
+-- explicit and survives projects where anon has default grants.
+REVOKE ALL ON SCHEMA public FROM anon;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM anon;
+
+GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;

@@ -9,8 +9,11 @@
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "check:secrets": "node scripts/check-secrets.mjs",
+    "scan:security": "node scripts/security-scan.mjs",
+    "audit:schema": "node scripts/audit-schema.mjs",
     "verify:build": "node scripts/verify-build.mjs",
-    "test": "npm run lint && npm run build && npm run check:secrets && npm run verify:build"
+    "test": "npm run lint && npm run build && npm run check:secrets && npm run scan:security && npm run audit:schema && npm run verify:build",
+    "ci": "npm run test && npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",
